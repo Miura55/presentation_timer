@@ -53,6 +53,7 @@ export default function PresentationTimer() {
   });
   const [customMinutes, setCustomMinutes] = useState<string>(initialMinutes.toString());
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   // クエリパラメータの変更を監視
   useEffect(() => {
@@ -69,6 +70,19 @@ export default function PresentationTimer() {
       setCustomMinutes(newMinutes.toString());
     }
   }, [searchParams, timer.totalSeconds, timer.isRunning]);
+
+  // フルスクリーン状態の監視
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement !== null);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   // ベル音を生成する関数
   const playBellSound = useCallback(() => {
@@ -231,10 +245,14 @@ export default function PresentationTimer() {
           {/* ヘッダー */}
           <header className="text-center mb-8">
             <h1 className="text-4xl font-bold text-gray-800 mb-2">プレゼンタイマー</h1>
-            <p className="text-gray-600">発表時間を効率的に管理しましょう</p>
-            <p className="text-sm text-gray-500 mt-2">
-              URL例: <code className="bg-gray-100 px-2 py-1 rounded">?time=5</code> で5分に設定
-            </p>
+            {!isFullscreen && (
+              <>
+                <p className="text-gray-600">発表時間を効率的に管理しましょう</p>
+                <p className="text-sm text-gray-700 mt-2">
+                  URL例: <code className="bg-gray-100 px-2 py-1 rounded">?time=5</code> で5分に設定
+                </p>
+              </>
+            )}
           </header>
 
           {/* メインタイマー表示 */}
@@ -291,112 +309,120 @@ export default function PresentationTimer() {
           </div>
 
           {/* 時間設定 */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">時間設定</h2>
-            
-            {/* プリセット時間 */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-700 mb-3">プリセット時間</h3>
-              <div className="flex flex-wrap gap-2">
-                {PRESET_TIMES.map((preset) => (
-                  <button
-                    key={preset.minutes}
-                    onClick={() => setPresetTime(preset.minutes)}
+          {!isFullscreen && (
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">時間設定</h2>
+              
+              {/* プリセット時間 */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-3">プリセット時間</h3>
+                <div className="flex flex-wrap gap-2">
+                  {PRESET_TIMES.map((preset) => (
+                    <button
+                      key={preset.minutes}
+                      onClick={() => setPresetTime(preset.minutes)}
+                      disabled={timer.isRunning}
+                      className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* カスタム時間設定 */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-3">カスタム時間</h3>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="number"
+                    min="1"
+                    max="99"
+                    value={customMinutes}
+                    onChange={(e) => setCustomMinutes(e.target.value)}
                     disabled={timer.isRunning}
+                    className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                  />
+                  <span className="text-gray-600">分</span>
+                  <button
+                    onClick={setCustomTime}
+                    disabled={timer.isRunning}
+                    className="px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                  >
+                    設定
+                  </button>
+                </div>
+              </div>
+
+              {/* 音声設定 */}
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-3">音声設定</h3>
+                <div className="flex gap-2 items-center">
+                  <button
+                    onClick={() => setSoundEnabled(!soundEnabled)}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      soundEnabled 
+                        ? 'bg-green-500 hover:bg-green-600 text-white' 
+                        : 'bg-gray-300 hover:bg-gray-400 text-gray-700'
+                    }`}
+                  >
+                    {soundEnabled ? '🔊 音声ON' : '🔇 音声OFF'}
+                  </button>
+                  <button
+                    onClick={playBellSound}
+                    disabled={!soundEnabled}
                     className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
                   >
-                    {preset.label}
+                    🔔 テスト再生
                   </button>
-                ))}
+                </div>
+                <p className="text-sm text-gray-700 mt-2">
+                  時間終了時にベル音が3回鳴ります
+                </p>
               </div>
-            </div>
 
-            {/* カスタム時間設定 */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-700 mb-3">カスタム時間</h3>
-              <div className="flex gap-2 items-center">
-                <input
-                  type="number"
-                  min="1"
-                  max="99"
-                  value={customMinutes}
-                  onChange={(e) => setCustomMinutes(e.target.value)}
-                  disabled={timer.isRunning}
-                  className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-                />
-                <span className="text-gray-600">分</span>
-                <button
-                  onClick={setCustomTime}
-                  disabled={timer.isRunning}
-                  className="px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-                >
-                  設定
-                </button>
+              {/* URL共有 */}
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-3">URL共有</h3>
+                <div className="flex gap-2 items-center">
+                  <button
+                    onClick={() => {
+                      const currentUrl = window.location.href;
+                      navigator.clipboard.writeText(currentUrl).then(() => {
+                        alert('URLをクリップボードにコピーしました！');
+                      }).catch(() => {
+                        alert('URLのコピーに失敗しました');
+                      });
+                    }}
+                    className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors"
+                  >
+                    📋 現在の設定でURLコピー
+                  </button>
+                </div>
+                <p className="text-sm text-gray-700 mt-2">
+                  設定した時間でURLを共有できます
+                </p>
               </div>
             </div>
-
-            {/* 音声設定 */}
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold text-gray-700 mb-3">音声設定</h3>
-              <div className="flex gap-2 items-center">
-                <button
-                  onClick={() => setSoundEnabled(!soundEnabled)}
-                  className={`px-4 py-2 rounded-lg transition-colors ${
-                    soundEnabled 
-                      ? 'bg-green-500 hover:bg-green-600 text-white' 
-                      : 'bg-gray-300 hover:bg-gray-400 text-gray-700'
-                  }`}
-                >
-                  {soundEnabled ? '🔊 音声ON' : '🔇 音声OFF'}
-                </button>
-                <button
-                  onClick={playBellSound}
-                  disabled={!soundEnabled}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-                >
-                  🔔 テスト再生
-                </button>
-              </div>
-              <p className="text-sm text-gray-500 mt-2">
-                時間終了時にベル音が3回鳴ります
-              </p>
-            </div>
-
-            {/* URL共有 */}
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold text-gray-700 mb-3">URL共有</h3>
-              <div className="flex gap-2 items-center">
-                <button
-                  onClick={() => {
-                    const currentUrl = window.location.href;
-                    navigator.clipboard.writeText(currentUrl).then(() => {
-                      alert('URLをクリップボードにコピーしました！');
-                    }).catch(() => {
-                      alert('URLのコピーに失敗しました');
-                    });
-                  }}
-                  className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors"
-                >
-                  📋 現在の設定でURLコピー
-                </button>
-              </div>
-              <p className="text-sm text-gray-500 mt-2">
-                設定した時間でURLを共有できます
-              </p>
-            </div>
-          </div>
+          )}
 
           {/* フルスクリーンボタン */}
           <div className="text-center mt-6">
             <button
               onClick={() => {
-                if (document.documentElement.requestFullscreen) {
-                  document.documentElement.requestFullscreen();
+                if (isFullscreen) {
+                  if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                  }
+                } else {
+                  if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                  }
                 }
               }}
               className="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors"
             >
-              🖥️ フルスクリーン
+              {isFullscreen ? '🔙 フルスクリーン終了' : '🖥️ フルスクリーン'}
             </button>
           </div>
         </div>
